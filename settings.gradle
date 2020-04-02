@@ -1,0 +1,5 @@
+sourceControl {
+    gitRepository("https://github.com/iamborisov/camunda-bpm-spring-boot-starter-grpc-core.git") {
+        producesModule("org.camunda.bpm.engine.grpc:core")
+    }
+}
