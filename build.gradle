@@ -2,7 +2,7 @@ plugins {
     id "java"
     id "java-library"
     id "idea"
-    id "com.google.protobuf" version "0.8.12"
+    id "io.freefair.lombok" version "4.1.5"
 }
 
 apply from: "version.gradle"
@@ -42,7 +42,7 @@ dependencies {
     compile "org.camunda.bpm:camunda-bom:${camundaVersion}"
     compile "org.camunda.bpm:camunda-engine-plugin-spin:${camundaVersion}"
     compile "org.camunda.bpm.springboot:camunda-bpm-spring-boot-starter:${camundaSpringBootVersion}"
-    implementation "org.camunda.bpm.engine.grpc:core:${grpcCoreVersion}"
+    compile "org.camunda.bpm.engine.grpc:core:${grpcCoreVersion}"
     compile "io.grpc:grpc-protobuf:${grpcVersion}"
     compile "io.grpc:grpc-stub:${grpcVersion}"
     compile "io.grpc:grpc-netty-shaded:${grpcVersion}"
@@ -54,18 +54,8 @@ tasks.withType(JavaCompile) {
     options.encoding = "UTF-8"
 }
 
-protobuf {
-    protoc {
-        artifact = "com.google.protobuf:protoc:3.11.0"
-    }
-    plugins {
-        grpc {
-            artifact = "io.grpc:protoc-gen-grpc-java:1.28.0"
-        }
-    }
-    generateProtoTasks {
-        all()*.plugins {
-            grpc {}
-        }
-    }
+lombok {
+    config["lombok.accessors.chain"] = "true"
+    config["lombok.equalsAndHashCode.callSuper"] = "skip"
+    config["lombok.anyConstructor.addConstructorProperties"] = "true"
 }
