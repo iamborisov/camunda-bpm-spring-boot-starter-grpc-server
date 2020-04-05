@@ -7,7 +7,7 @@ plugins {
 
 apply from: "version.gradle"
 
-group = "org.camunda.bpm.engine.grpc"
+group = "org.camunda.bpm.engine.grpc.server"
 
 sourceCompatibility = JavaVersion.VERSION_11
 targetCompatibility = JavaVersion.VERSION_11
