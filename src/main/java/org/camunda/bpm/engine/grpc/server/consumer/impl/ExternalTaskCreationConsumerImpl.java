@@ -34,9 +34,9 @@ public class ExternalTaskCreationConsumerImpl implements ExternalTaskCreationCon
     }
 
     @Override
-    public void stop() throws AlreadyStopedException {
+    public void stop() throws AlreadyStoppedException {
         if (!isRunning) {
-            throw new AlreadyStopedException();
+            throw new AlreadyStoppedException();
         }
 
         try {

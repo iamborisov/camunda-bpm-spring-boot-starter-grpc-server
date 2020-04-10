@@ -4,7 +4,7 @@ public interface ExternalTaskCreationConsumer extends Runnable {
 
     void start() throws AlreadyStartedException;
 
-    void stop() throws AlreadyStopedException;
+    void stop() throws AlreadyStoppedException;
 
     class StateChangeException extends Exception {
     }
@@ -12,6 +12,6 @@ public interface ExternalTaskCreationConsumer extends Runnable {
     class AlreadyStartedException extends StateChangeException {
     }
 
-    class AlreadyStopedException extends StateChangeException {
+    class AlreadyStoppedException extends StateChangeException {
     }
 }

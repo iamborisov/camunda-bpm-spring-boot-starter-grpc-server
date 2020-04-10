@@ -32,7 +32,7 @@ public class ProcessEngineEventListenerimpl implements ProcessEngineEventListene
 
         try {
             externalTaskCreationConsumer.stop();
-        } catch (ExternalTaskCreationConsumer.AlreadyStopedException e) {
+        } catch (ExternalTaskCreationConsumer.AlreadyStoppedException e) {
             log.error("Consumer already stopped", e);
         }
     }
