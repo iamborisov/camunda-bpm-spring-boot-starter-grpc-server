@@ -4,7 +4,7 @@ Server-side library
 
 ## See also
 
-Server-side library: https://github.com/iamborisov/camunda-bpm-spring-boot-starter-grpc-server    
+Client library: https://github.com/iamborisov/camunda-bpm-spring-boot-starter-grpc-client  
 
 Usage examples: https://github.com/iamborisov/camunda-bpm-spring-boot-starter-grpc-examples
 
