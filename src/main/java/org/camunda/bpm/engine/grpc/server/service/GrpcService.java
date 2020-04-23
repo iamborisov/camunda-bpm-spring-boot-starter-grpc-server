@@ -66,6 +66,8 @@ public class GrpcService extends ExternalTaskImplBase {
             @Override
             public void onError(Throwable t) {
                 log.error("fetchAndLock::onError", t);
+
+                connectionRepository.remove(responseObserver);
             }
 
             @Override
