@@ -41,8 +41,6 @@ public class ExternalTaskInformerImpl implements ExternalTaskInformer {
                     buildResponse(lockedExternalTask)
                 );
             });
-
-            iterator.remove();
         }
     }
 
