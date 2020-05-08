@@ -12,7 +12,8 @@ import static java.lang.Boolean.TRUE;
 public interface ExternalTaskQuery {
 
     static ExternalTaskQueryBuilder create(FetchAndLockRequest request, ExternalTaskService externalTaskService) {
-        ExternalTaskQueryBuilder fetchBuilder = externalTaskService.fetchAndLock(1,
+        ExternalTaskQueryBuilder fetchBuilder = externalTaskService.fetchAndLock(
+            request.getMaxTasks(),
             request.getWorkerId(),
             request.getUsePriority());
 
