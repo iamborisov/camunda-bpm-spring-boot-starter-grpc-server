@@ -4,9 +4,6 @@ import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.camunda.bpm.engine.ExternalTaskService;
-import org.camunda.bpm.engine.externaltask.ExternalTaskQueryBuilder;
-import org.camunda.bpm.engine.externaltask.ExternalTaskQueryTopicBuilder;
-import org.camunda.bpm.engine.externaltask.LockedExternalTask;
 import org.camunda.bpm.engine.grpc.CompleteRequest;
 import org.camunda.bpm.engine.grpc.CompleteResponse;
 import org.camunda.bpm.engine.grpc.CreateMessageRequest;
@@ -26,16 +23,11 @@ import org.camunda.bpm.engine.grpc.server.repository.ConnectionRepository;
 import org.camunda.bpm.engine.impl.MessageCorrelationBuilderImpl;
 import org.camunda.bpm.engine.impl.interceptor.CommandExecutor;
 import org.camunda.bpm.engine.runtime.MessageCorrelationBuilder;
-import org.camunda.spin.plugin.variable.value.JsonValue;
 import org.camunda.spin.plugin.variable.value.impl.JsonValueImpl;
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
-
-import static java.lang.Boolean.TRUE;
 
 @Slf4j
 @Service
@@ -50,17 +42,20 @@ public class GrpcService extends ExternalTaskImplBase {
 
     @Override
     public StreamObserver<FetchAndLockRequest> fetchAndLock(StreamObserver<FetchAndLockResponse> responseObserver) {
-        StreamObserver<FetchAndLockRequest> requestObserver = new StreamObserver<FetchAndLockRequest>() {
+        return new StreamObserver<>() {
 
             @Override
             public void onNext(FetchAndLockRequest request) {
                 log.info("fetchAndLock::onNext", request);
 
-                try {
-                    informClient(request, responseObserver);
-                } catch (Throwable t) {
-                    log.error("fetchAndLock::onNext::informClient error", t);
-                }
+                connectionRepository.get().forEach(pair -> {
+                    if (pair.getRight().equals(responseObserver) && !pair.getLeft().equals(request)) {
+                        log.info("Request parameters updated for worker {}", request.getWorkerId());
+
+                        connectionRepository.remove(responseObserver);
+                        connectionRepository.add(request, responseObserver);
+                    }
+                });
             }
 
             @Override
@@ -78,7 +73,6 @@ public class GrpcService extends ExternalTaskImplBase {
                 responseObserver.onCompleted();
             }
         };
-        return requestObserver;
     }
 
     @Override
@@ -200,98 +194,7 @@ public class GrpcService extends ExternalTaskImplBase {
         }
     }
 
-    private void informClient(FetchAndLockRequest request, StreamObserver<FetchAndLockResponse> client) {
-        ExternalTaskQueryBuilder fetchBuilder = createQuery(request, externalTaskService);
-        List<LockedExternalTask> lockedTasks = fetchBuilder.execute();
-
-        log.info("Inform client about {} tasks", lockedTasks.size(), request);
-
-        if (lockedTasks.isEmpty()) {
-            // if no external tasks locked => save the response observer and
-            // notify later when external task created for the topic in the engine
-            connectionRepository.add(request, client);
-        } else {
-            JsonValue variables = lockedTasks.get(0).getVariables().getValueTyped("variables");
-
-            FetchAndLockResponse reply = FetchAndLockResponse.newBuilder()
-                .setId(lockedTasks.get(0).getId())
-                .setWorkerId(request.getWorkerId())
-                .setTopicName(lockedTasks.get(0).getTopicName())
-                .setRetries(lockedTasks.get(0).getRetries() == null ? -1 : lockedTasks.get(0).getRetries())
-                .setBusinessKey(lockedTasks.get(0).getBusinessKey() == null ? "" : lockedTasks.get(0).getBusinessKey())
-                .setProcessInstanceId(lockedTasks.get(0).getProcessInstanceId() == null ? "" : lockedTasks.get(0).getProcessInstanceId())
-                .setVariables(variables.getValueSerialized())
-                .build();
-            client.onNext(reply);
-        }
-    }
-
-    public static ExternalTaskQueryBuilder createQuery(FetchAndLockRequest request, ExternalTaskService externalTaskService) {
-        ExternalTaskQueryBuilder fetchBuilder = externalTaskService.fetchAndLock(1,
-            request.getWorkerId(),
-            request.getUsePriority());
-
-        if (request.getTopicList() != null) {
-            for (FetchAndLockRequest.FetchExternalTaskTopic topicDto : request.getTopicList()) {
-                ExternalTaskQueryTopicBuilder topicFetchBuilder = fetchBuilder.topic(topicDto.getTopicName(), topicDto.getLockDuration());
-
-                if (notEmpty(topicDto.getBusinessKey())) {
-                    topicFetchBuilder = topicFetchBuilder.businessKey(topicDto.getBusinessKey());
-                }
-
-                if (notEmpty(topicDto.getProcessDefinitionId())) {
-                    topicFetchBuilder.processDefinitionId(topicDto.getProcessDefinitionId());
-                }
-
-                if (notEmpty(topicDto.getProcessDefinitionIdInList())) {
-                    topicFetchBuilder.processDefinitionIdIn(topicDto.getProcessDefinitionIdInList().toArray(new String[topicDto.getProcessDefinitionIdInList().size()]));
-                }
-
-                if (notEmpty(topicDto.getProcessDefinitionKey())) {
-                    topicFetchBuilder.processDefinitionKey(topicDto.getProcessDefinitionKey());
-                }
-
-                if (notEmpty(topicDto.getProcessDefinitionKeyInList())) {
-                    topicFetchBuilder.processDefinitionKeyIn(topicDto.getProcessDefinitionKeyInList().toArray(new String[topicDto.getProcessDefinitionKeyInList().size()]));
-                }
-
-                if (topicDto.getDeserializeValues()) {
-                    topicFetchBuilder = topicFetchBuilder.enableCustomObjectDeserialization();
-                }
-
-                if (topicDto.getLocalVariables()) {
-                    topicFetchBuilder = topicFetchBuilder.localVariables();
-                }
-
-                if (TRUE.equals(topicDto.getWithoutTenantId())) {
-                    topicFetchBuilder = topicFetchBuilder.withoutTenantId();
-                }
-
-                if (notEmpty(topicDto.getTenantIdInList())) {
-                    topicFetchBuilder = topicFetchBuilder.tenantIdIn(topicDto.getTenantIdInList().toArray(new String[topicDto.getTenantIdInList().size()]));
-                }
-
-                if (notEmpty(topicDto.getProcessDefinitionVersionTag())) {
-                    topicFetchBuilder = topicFetchBuilder.processDefinitionVersionTag(topicDto.getProcessDefinitionVersionTag());
-                }
-
-                fetchBuilder = topicFetchBuilder;
-            }
-        }
-
-        return fetchBuilder;
-    }
-
-    private static boolean notEmpty(String value) {
-        return value != null && !value.isEmpty();
-    }
-
-    private static boolean notEmpty(Collection<?> list) {
-        return list != null && !list.isEmpty();
-    }
-
     private Map<String, Object> assembleVariables(String jsonValue) {
         return Collections.singletonMap("variables", new JsonValueImpl(jsonValue).getValue());
     }
-
 }

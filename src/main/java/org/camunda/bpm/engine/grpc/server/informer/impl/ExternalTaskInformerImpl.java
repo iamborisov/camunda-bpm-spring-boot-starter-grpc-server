@@ -9,13 +9,12 @@ import org.camunda.bpm.engine.externaltask.LockedExternalTask;
 import org.camunda.bpm.engine.grpc.FetchAndLockRequest;
 import org.camunda.bpm.engine.grpc.FetchAndLockResponse;
 import org.camunda.bpm.engine.grpc.server.informer.ExternalTaskInformer;
+import org.camunda.bpm.engine.grpc.server.informer.ExternalTaskQuery;
 import org.camunda.bpm.engine.grpc.server.repository.ConnectionRepository;
-import org.camunda.bpm.engine.grpc.server.service.GrpcService;
 import org.camunda.spin.plugin.variable.value.JsonValue;
 import org.springframework.stereotype.Service;
 
 import java.util.Iterator;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -32,15 +31,16 @@ public class ExternalTaskInformerImpl implements ExternalTaskInformer {
 
         for (Iterator<Pair<FetchAndLockRequest, StreamObserver<FetchAndLockResponse>>> iterator = connectionRepository.get().iterator(); iterator.hasNext(); ) {
             Pair<FetchAndLockRequest, StreamObserver<FetchAndLockResponse>> pair = iterator.next();
-            List<LockedExternalTask> lockedTasks = GrpcService.createQuery(pair.getLeft(), externalTaskService).execute();
 
-            lockedTasks.forEach(lockedExternalTask -> {
-                log.info("Inform client about locked external task with id={}", lockedExternalTask.getId());
+            ExternalTaskQuery.create(pair.getLeft(), externalTaskService)
+                .execute()
+                .forEach(lockedExternalTask -> {
+                    log.info("Inform client about locked external task with id={}", lockedExternalTask.getId());
 
-                pair.getRight().onNext(
-                    buildResponse(lockedExternalTask)
-                );
-            });
+                    pair.getRight().onNext(
+                        buildResponse(lockedExternalTask)
+                    );
+                });
         }
     }
 
