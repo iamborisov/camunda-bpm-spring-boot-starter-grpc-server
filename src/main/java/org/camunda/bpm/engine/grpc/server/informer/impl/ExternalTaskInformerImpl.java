@@ -15,6 +15,7 @@ import org.camunda.spin.plugin.variable.value.JsonValue;
 import org.springframework.stereotype.Service;
 
 import java.util.Iterator;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -32,15 +33,19 @@ public class ExternalTaskInformerImpl implements ExternalTaskInformer {
         for (Iterator<Pair<FetchAndLockRequest, StreamObserver<FetchAndLockResponse>>> iterator = connectionRepository.get().iterator(); iterator.hasNext(); ) {
             Pair<FetchAndLockRequest, StreamObserver<FetchAndLockResponse>> pair = iterator.next();
 
-            ExternalTaskQuery.create(pair.getLeft(), externalTaskService)
-                .execute()
-                .forEach(lockedExternalTask -> {
+            List<LockedExternalTask> tasks;
+
+            do {
+                tasks = ExternalTaskQuery.create(pair.getLeft(), externalTaskService).execute();
+
+                tasks.forEach(lockedExternalTask -> {
                     log.info("Inform client about locked external task with id={}", lockedExternalTask.getId());
 
                     pair.getRight().onNext(
                         buildResponse(lockedExternalTask)
                     );
                 });
+            } while (tasks.size() > 0);
         }
     }
 
