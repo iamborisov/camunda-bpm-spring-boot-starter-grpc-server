@@ -28,9 +28,10 @@ public class ExternalTaskInformerImpl implements ExternalTaskInformer {
 
     @Override
     public void inform() {
-        log.info("Found {} pending connections", connectionRepository.get().size());
+        List<Pair<FetchAndLockRequest, StreamObserver<FetchAndLockResponse>>> connections = connectionRepository.get();
+        log.info("Found {} pending connections", connections.size());
 
-        for (Iterator<Pair<FetchAndLockRequest, StreamObserver<FetchAndLockResponse>>> iterator = connectionRepository.get().iterator(); iterator.hasNext(); ) {
+        for (Iterator<Pair<FetchAndLockRequest, StreamObserver<FetchAndLockResponse>>> iterator = connections.iterator(); iterator.hasNext(); ) {
             Pair<FetchAndLockRequest, StreamObserver<FetchAndLockResponse>> pair = iterator.next();
 
             List<LockedExternalTask> tasks;

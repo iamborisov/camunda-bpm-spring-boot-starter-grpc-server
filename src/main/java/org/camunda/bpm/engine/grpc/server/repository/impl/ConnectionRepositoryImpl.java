@@ -35,6 +35,6 @@ public class ConnectionRepositoryImpl implements ConnectionRepository {
 
     @Override
     public List<Pair<FetchAndLockRequest, StreamObserver<FetchAndLockResponse>>> get() {
-        return connections;
+        return new ArrayList<>(connections);
     }
 }
