@@ -48,14 +48,8 @@ public class GrpcService extends ExternalTaskImplBase {
             public void onNext(FetchAndLockRequest request) {
                 log.info("fetchAndLock::onNext", request);
 
-                connectionRepository.get().forEach(pair -> {
-                    if (pair.getRight().equals(responseObserver) && !pair.getLeft().equals(request)) {
-                        log.info("Request parameters updated for worker {}", request.getWorkerId());
-
-                        connectionRepository.remove(responseObserver);
-                        connectionRepository.add(request, responseObserver);
-                    }
-                });
+                connectionRepository.remove(responseObserver);
+                connectionRepository.add(request, responseObserver);
             }
 
             @Override
