@@ -84,7 +84,8 @@ public class GrpcService extends ExternalTaskImplBase {
             responseObserver.onCompleted();
         } catch (Exception e) {
             log.error("Error on completing task " + request.getId(), e);
-            responseObserver.onError(e);
+            responseObserver.onNext(CompleteResponse.newBuilder().setStatus("500").build());
+            responseObserver.onCompleted();
         }
     }
 
@@ -106,7 +107,8 @@ public class GrpcService extends ExternalTaskImplBase {
             responseObserver.onCompleted();
         } catch (Exception e) {
             log.error("Error on handling failure for task " + request.getId(), e);
-            responseObserver.onError(e);
+            responseObserver.onNext(HandleFailureResponse.newBuilder().setStatus("500").build());
+            responseObserver.onCompleted();
         }
     }
 
@@ -127,7 +129,8 @@ public class GrpcService extends ExternalTaskImplBase {
             responseObserver.onCompleted();
         } catch (Exception e) {
             log.error("Error on handling BPMN error for task " + request.getId(), e);
-            responseObserver.onError(e);
+            responseObserver.onNext(HandleBpmnErrorResponse.newBuilder().setStatus("500").build());
+            responseObserver.onCompleted();
         }
     }
 
@@ -141,7 +144,8 @@ public class GrpcService extends ExternalTaskImplBase {
             responseObserver.onCompleted();
         } catch (Exception e) {
             log.error("Error on unlocking task " + request.getId(), e);
-            responseObserver.onError(e);
+            responseObserver.onNext(UnlockResponse.newBuilder().setStatus("500").build());
+            responseObserver.onCompleted();
         }
     }
 
@@ -155,7 +159,8 @@ public class GrpcService extends ExternalTaskImplBase {
             responseObserver.onCompleted();
         } catch (Exception e) {
             log.error("Error on extending lock for task " + request.getId(), e);
-            responseObserver.onError(e);
+            responseObserver.onNext(ExtendLockResponse.newBuilder().setStatus("500").build());
+            responseObserver.onCompleted();
         }
     }
 
@@ -184,7 +189,8 @@ public class GrpcService extends ExternalTaskImplBase {
             responseObserver.onCompleted();
         } catch (Exception e) {
             log.error("Error on correlating message " + request.getMessageName(), e);
-            responseObserver.onError(e);
+            responseObserver.onNext(CreateMessageResponse.newBuilder().setProcessInstanceId(request.getProcessInstanceId() == null ? "" : request.getProcessInstanceId()).build());
+            responseObserver.onCompleted();
         }
     }
 
