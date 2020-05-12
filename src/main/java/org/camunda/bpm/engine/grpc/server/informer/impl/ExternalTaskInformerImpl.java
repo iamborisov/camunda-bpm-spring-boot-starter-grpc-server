@@ -60,7 +60,7 @@ public class ExternalTaskInformerImpl implements ExternalTaskInformer {
             .setRetries(lockedExternalTask.getRetries() == null ? -1 : lockedExternalTask.getRetries())
             .setBusinessKey(lockedExternalTask.getBusinessKey() == null ? "" : lockedExternalTask.getBusinessKey())
             .setProcessInstanceId(lockedExternalTask.getProcessInstanceId())
-            .setVariables(variables.getValueSerialized())
+            .setVariables(variables == null ? "" : variables.getValueSerialized())
             .build();
     }
 }
