@@ -4,10 +4,13 @@ import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.camunda.bpm.engine.ExternalTaskService;
+import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.grpc.CompleteRequest;
 import org.camunda.bpm.engine.grpc.CompleteResponse;
 import org.camunda.bpm.engine.grpc.CreateMessageRequest;
 import org.camunda.bpm.engine.grpc.CreateMessageResponse;
+import org.camunda.bpm.engine.grpc.DeleteProcessInstanceRequest;
+import org.camunda.bpm.engine.grpc.DeleteProcessInstanceResponse;
 import org.camunda.bpm.engine.grpc.ExtendLockRequest;
 import org.camunda.bpm.engine.grpc.ExtendLockResponse;
 import org.camunda.bpm.engine.grpc.ExternalTaskGrpc.ExternalTaskImplBase;
@@ -35,6 +38,8 @@ import java.util.Map;
 public class GrpcService extends ExternalTaskImplBase {
 
     private final ExternalTaskService externalTaskService;
+
+    private final RuntimeService runtimeService;
 
     private final ConnectionRepository connectionRepository;
 
@@ -190,6 +195,21 @@ public class GrpcService extends ExternalTaskImplBase {
         } catch (Exception e) {
             log.error("Error on correlating message " + request.getMessageName(), e);
             responseObserver.onNext(CreateMessageResponse.newBuilder().setProcessInstanceId(request.getProcessInstanceId() == null ? "" : request.getProcessInstanceId()).build());
+            responseObserver.onCompleted();
+        }
+    }
+
+    @Override
+    public void deleteProcessInstance(DeleteProcessInstanceRequest request, StreamObserver<DeleteProcessInstanceResponse> responseObserver) {
+        log.info("Deleting process instance '{}'", request);
+
+        try {
+            runtimeService.deleteProcessInstance(request.getProcessInstanceId(), request.getReason());
+            responseObserver.onNext(DeleteProcessInstanceResponse.newBuilder().setStatus("200").build());
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            log.error("Error on deleting process instance '{}'", request.getProcessInstanceId(), e);
+            responseObserver.onNext(DeleteProcessInstanceResponse.newBuilder().setStatus("500").build());
             responseObserver.onCompleted();
         }
     }
