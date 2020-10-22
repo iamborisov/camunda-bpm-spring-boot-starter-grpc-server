@@ -1,6 +1,9 @@
 package org.camunda.bpm.engine.grpc.server.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.grpc.stub.StreamObserver;
+import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.camunda.bpm.engine.ExternalTaskService;
@@ -45,6 +48,8 @@ public class GrpcService extends ExternalTaskImplBase {
 
     private final CommandExecutor commandExecutor;
 
+    private final ObjectMapper objectMapper;
+
     @Override
     public StreamObserver<FetchAndLockRequest> fetchAndLock(StreamObserver<FetchAndLockResponse> responseObserver) {
         return new StreamObserver<>() {
@@ -82,7 +87,7 @@ public class GrpcService extends ExternalTaskImplBase {
             externalTaskService.complete(
                 request.getId(),
                 request.getWorkerId(),
-                assembleVariables(request.getVariables())
+                assembleVariables(request.getVariables(), request.getId())
             );
 
             responseObserver.onNext(CompleteResponse.newBuilder().setStatus("200").build());
@@ -127,7 +132,7 @@ public class GrpcService extends ExternalTaskImplBase {
                 request.getWorkerId(),
                 request.getErrorCode(),
                 request.getErrorMessage(),
-                assembleVariables(request.getVariables())
+                assembleVariables(request.getVariables(), request.getId())
             );
 
             responseObserver.onNext(HandleBpmnErrorResponse.newBuilder().setStatus("200").build());
@@ -181,7 +186,15 @@ public class GrpcService extends ExternalTaskImplBase {
             }
 
             if (!request.getVariables().isEmpty()) {
-                messageCorrelationBuilder.setVariables(assembleVariables(request.getVariables()));
+                Map<String, Object> variables;
+
+                if (!request.getProcessInstanceId().isEmpty()) {
+                    variables = assembleVariables(request.getVariables(), request.getProcessInstanceId());
+                } else {
+                    variables = assembleVariables(request.getVariables());
+                }
+
+                messageCorrelationBuilder.setVariables(variables);
             }
 
             if (!request.getBusinessKey().isEmpty()) {
@@ -216,5 +229,28 @@ public class GrpcService extends ExternalTaskImplBase {
 
     private Map<String, Object> assembleVariables(String jsonValue) {
         return Collections.singletonMap("variables", new JsonValueImpl(jsonValue).getValue());
+    }
+
+    private Map<String, Object> assembleVariables(String jsonValue, String processInstanceId) {
+        var processVariables = this.runtimeService.getVariables(processInstanceId).get("variables");
+
+        JsonNode mergedVariables;
+
+        try {
+            mergedVariables = deepMerge(
+                objectMapper.readTree(processVariables.toString()),
+                objectMapper.readTree(jsonValue)
+            );
+        } catch (Throwable e) {
+            throw new RuntimeException("Unable to merged variables", e);
+        }
+
+        return Collections.singletonMap("variables", mergedVariables.toString());
+    }
+
+    public JsonNode deepMerge(JsonNode sourceNode, JsonNode targetNode) throws IOException {
+        var objectReader = objectMapper.readerForUpdating(sourceNode);
+
+        return objectReader.readValue(targetNode);
     }
 }
