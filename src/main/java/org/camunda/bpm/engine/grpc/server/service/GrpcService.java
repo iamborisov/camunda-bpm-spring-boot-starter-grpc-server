@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
+import java.util.HashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.camunda.bpm.engine.ExternalTaskService;
@@ -87,7 +88,7 @@ public class GrpcService extends ExternalTaskImplBase {
             externalTaskService.complete(
                 request.getId(),
                 request.getWorkerId(),
-                assembleVariables(request.getVariables(), request.getId())
+                assembleVariables(request.getVariables(), request.getProcessInstanceId())
             );
 
             responseObserver.onNext(CompleteResponse.newBuilder().setStatus("200").build());
@@ -132,7 +133,7 @@ public class GrpcService extends ExternalTaskImplBase {
                 request.getWorkerId(),
                 request.getErrorCode(),
                 request.getErrorMessage(),
-                assembleVariables(request.getVariables(), request.getId())
+                assembleVariables(request.getVariables(), request.getProcessInstanceId())
             );
 
             responseObserver.onNext(HandleBpmnErrorResponse.newBuilder().setStatus("200").build());
@@ -234,23 +235,27 @@ public class GrpcService extends ExternalTaskImplBase {
     private Map<String, Object> assembleVariables(String jsonValue, String processInstanceId) {
         var processVariables = this.runtimeService.getVariables(processInstanceId).get("variables");
 
-        JsonNode mergedVariables;
+        String mergedVariables;
 
         try {
-            mergedVariables = deepMerge(
-                objectMapper.readTree(processVariables.toString()),
-                objectMapper.readTree(jsonValue)
+            mergedVariables = mergeJson(
+                processVariables.toString(),
+                jsonValue
             );
         } catch (Throwable e) {
             throw new RuntimeException("Unable to merged variables", e);
         }
 
-        return Collections.singletonMap("variables", mergedVariables.toString());
+        return Collections.singletonMap("variables", new JsonValueImpl(mergedVariables).getValue());
     }
 
-    public JsonNode deepMerge(JsonNode sourceNode, JsonNode targetNode) throws IOException {
-        var objectReader = objectMapper.readerForUpdating(sourceNode);
+    public String mergeJson(String sourceJson, String targetJson) throws IOException {
+        Map<String, Object> sourceMap = objectMapper.readValue(sourceJson, Map.class);
+        Map<String, Object> targetMap = objectMapper.readValue(targetJson, Map.class);
+        Map<String, Object> merged = new HashMap<>(sourceMap);
 
-        return objectReader.readValue(targetNode);
+        merged.putAll(targetMap);
+
+        return objectMapper.writeValueAsString(merged);
     }
 }
