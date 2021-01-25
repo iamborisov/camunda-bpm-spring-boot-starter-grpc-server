@@ -13,6 +13,8 @@ import org.camunda.bpm.engine.grpc.CompleteRequest;
 import org.camunda.bpm.engine.grpc.CompleteResponse;
 import org.camunda.bpm.engine.grpc.CreateMessageRequest;
 import org.camunda.bpm.engine.grpc.CreateMessageResponse;
+import org.camunda.bpm.engine.grpc.CreateProcessInstanceRequest;
+import org.camunda.bpm.engine.grpc.CreateProcessInstanceResponse;
 import org.camunda.bpm.engine.grpc.DeleteProcessInstanceRequest;
 import org.camunda.bpm.engine.grpc.DeleteProcessInstanceResponse;
 import org.camunda.bpm.engine.grpc.ExtendLockRequest;
@@ -224,6 +226,35 @@ public class GrpcService extends ExternalTaskImplBase {
         } catch (Exception e) {
             log.error("Error on deleting process instance '{}'", request.getProcessInstanceId(), e);
             responseObserver.onNext(DeleteProcessInstanceResponse.newBuilder().setStatus("500").build());
+            responseObserver.onCompleted();
+        }
+    }
+
+    @Override
+    public void createProcessInstance(CreateProcessInstanceRequest request, StreamObserver<CreateProcessInstanceResponse> responseObserver) {
+        log.info("Creating process instance '{}'", request);
+
+        try {
+            var builder = runtimeService.createProcessInstanceByKey(request.getProcessName());
+            builder.businessKey(request.getBusinessKey())
+                .setVariables(assembleVariables(request.getVariables()));
+
+            var processInstance = builder.execute();
+            responseObserver.onNext(
+                CreateProcessInstanceResponse.newBuilder()
+                    .setStatus("200")
+                    .setProcessInstanceId(processInstance.getProcessInstanceId())
+                    .build()
+            );
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            log.error("Error on creating process instance '{}'", request.getProcessName(), e);
+            responseObserver.onNext(
+                CreateProcessInstanceResponse.newBuilder()
+                    .setStatus("500")
+                    .setMessage(e.getMessage())
+                    .build()
+            );
             responseObserver.onCompleted();
         }
     }
